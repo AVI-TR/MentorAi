@@ -22,3 +22,13 @@ class NotFoundException(AppException):
 class ValidationException(AppException):
     def __init__(self, detail: str = "Invalid request payload."):
         super().__init__(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+
+
+class ConflictException(AppException):
+    def __init__(self, detail: str = "Resource already exists."):
+        super().__init__(status_code=status.HTTP_409_CONFLICT, detail=detail)
+
+
+class BadRequestException(AppException):
+    def __init__(self, detail: str = "Bad request."):
+        super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)

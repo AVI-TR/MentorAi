@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import setup_logging
-from app.db.session import engine
+from app.db.seed import seed_database
+from app.db.session import SessionLocal, engine
 from app.models import Base
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,10 @@ async def lifespan(app: FastAPI):
     # Initialize all registered ORM models
     Base.metadata.create_all(bind=engine)
     logger.info("Database schemas initialized.")
+
+    with SessionLocal() as db:
+        seed_database(db)
+    logger.info("Default catalog data seeded.")
 
     yield
 

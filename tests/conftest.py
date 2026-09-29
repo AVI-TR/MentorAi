@@ -50,3 +50,11 @@ def client(db_session: Session):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function")
+def seeded_client(client: TestClient, db_session: Session):
+    """Fixture providing a TestClient with pre-seeded catalog data."""
+    from app.services.catalog_service import catalog_service
+    catalog_service.seed_catalog(db_session)
+    return client

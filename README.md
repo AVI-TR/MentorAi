@@ -4,7 +4,7 @@
 
 ---
 
-## 🚀 Product Vision & MVP Flow
+## Product Vision & MVP Flow
 
 Mentor AI guides learners from their current state to their target career outcomes through a structured, adaptive learning lifecycle:
 
@@ -22,7 +22,7 @@ User Profile
 
 ---
 
-## 🏗️ Architecture & Project Structure
+## Architecture & Project Structure
 
 The project uses a modular, layered architecture built on **FastAPI**, **SQLAlchemy 2.0 (Synchronous)**, and **Pydantic v2**. For detailed design standards and guidelines, see [docs/architecture.md](docs/architecture.md).
 
@@ -79,7 +79,7 @@ MentorAi/
 
 ---
 
-## 🛠️ Quickstart Guide
+##  Quickstart Guide
 
 ### 1. Prerequisites
 - Python 3.10+ (tested on Python 3.14)
@@ -123,7 +123,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 ---
 
-## 🧪 Running Tests
+## Running Tests
 
 Execute the automated test suite with `pytest`:
 

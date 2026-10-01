@@ -106,3 +106,21 @@ def test_roadmap_item_must_belong_to_goal(seeded_client: TestClient):
         json={"status": "done"},
     )
     assert response.status_code == 404
+
+
+def test_learning_module_seed_is_complete_and_idempotent(db_session):
+    from sqlalchemy import select
+    from app.db.seed import seed_database
+    from app.models.learning_module import LearningModule
+
+    seed_database(db_session)
+    first = list(db_session.scalars(select(LearningModule)).all())
+    seed_database(db_session)
+    second = list(db_session.scalars(select(LearningModule)).all())
+
+    skill_count = len({module.skill_id for module in first})
+    assert len(first) == skill_count * 5
+    assert len(second) == len(first)
+    assert {(module.skill_id, module.to_level) for module in second} == {
+        (module.skill_id, module.to_level) for module in first
+    }

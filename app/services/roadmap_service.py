@@ -7,7 +7,7 @@ from app.models.gap_analysis import GapAnalysis, GapAnalysisItem
 from app.models.learning_module import LearningModule
 from app.models.roadmap import Roadmap
 from app.models.roadmap_item import RoadmapItem
-from app.schemas.roadmap import RoadmapItemStatusUpdate, RoadmapRead
+from app.schemas.roadmap import RoadmapItemRead, RoadmapItemStatusUpdate, RoadmapRead
 from app.services.gap_analysis_service import gap_analysis_service
 from app.services.roadmap_engine import RoadmapGapItem, RoadmapModule, build_roadmap
 from app.services.user_service import user_service

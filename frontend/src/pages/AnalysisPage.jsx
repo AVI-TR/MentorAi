@@ -1,338 +1,148 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import {
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
-  AlertTriangle,
-  Award,
-  Target,
-  Sparkles,
-  BarChart3,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, Award } from 'lucide-react';
 import AnimatedPage from '../components/AnimatedPage';
 import { useMentor } from '../context/MentorContext';
 
+const levelLabel = (level) => ({
+  0: '0 (No experience)', 1: '1 (Beginner)', 2: '2 (Basic)',
+  3: '3 (Working)', 4: '4 (Proficient)', 5: '5 (Expert)',
+}[level] || '0 (No experience)');
+
 export default function AnalysisPage() {
   const navigate = useNavigate();
-  const shouldReduceMotion = useReducedMotion();
-  const { analysisResult, selectedCareer } = useMentor();
-
+  const reduceMotion = useReducedMotion();
+  const { analysisResult, selectedCareer, sessionLoading, sessionError, restoreSession } = useMentor();
   const [displayPercent, setDisplayPercent] = useState(0);
 
-  // If no analysis result is present, redirect to assessment
   useEffect(() => {
-    if (!analysisResult) {
-      navigate('/skills');
-    }
-  }, [analysisResult, navigate]);
+    if (!sessionLoading && !analysisResult) navigate('/skills', { replace: true });
+  }, [analysisResult, sessionLoading, navigate]);
 
-  const targetPercent = analysisResult?.readiness_percent ?? 0;
-
-  // Animate readiness percentage counting upward
   useEffect(() => {
-    if (shouldReduceMotion) {
-      setDisplayPercent(targetPercent);
-      return;
+    const target = analysisResult?.readiness_percent ?? 0;
+    if (reduceMotion) {
+      setDisplayPercent(target);
+      return undefined;
     }
-
-    let start = 0;
-    const duration = 1200; // ms
-    const startTime = performance.now();
-
-    const animateCount = (now) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = eased * targetPercent;
-      setDisplayPercent(current);
-
-      if (progress < 1) {
-        requestAnimationFrame(animateCount);
-      } else {
-        setDisplayPercent(targetPercent);
-      }
+    const start = performance.now();
+    const duration = 280;
+    let frame;
+    const tick = (now) => {
+      const progress = Math.min((now - start) / duration, 1);
+      setDisplayPercent(target * (1 - Math.pow(1 - progress, 3)));
+      if (progress < 1) frame = requestAnimationFrame(tick);
     };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [analysisResult?.readiness_percent, reduceMotion]);
 
-    const animId = requestAnimationFrame(animateCount);
-    return () => cancelAnimationFrame(animId);
-  }, [targetPercent, shouldReduceMotion]);
-
-  if (!analysisResult) {
-    return null;
+  if (sessionLoading || !analysisResult) {
+    return (
+      <AnimatedPage className="form-page">
+        <div className="flow-card">
+          <div className="skeleton-stack">
+            <div className="skeleton skeleton-title" />
+            <div className="skeleton skeleton-card" />
+            <div className="skeleton skeleton-card" />
+          </div>
+        </div>
+      </AnimatedPage>
+    );
   }
 
-  const items = analysisResult.items || [];
-
-  // Sort items: High priority / large gaps first, then met skills
-  const sortedItems = [...items].sort((a, b) => {
-    if (b.priority_score !== a.priority_score) {
-      return b.priority_score - a.priority_score;
-    }
-    return b.gap - a.gap;
-  });
-
-  const getPriorityLabel = (item) => {
-    if (item.gap === 0) return { label: 'Met', class: 'priority-met' };
-    if (item.priority_score >= 8 || item.gap >= 3)
-      return { label: 'High Priority', class: 'priority-high' };
-    if (item.priority_score >= 4 || item.gap >= 2)
-      return { label: 'Medium Priority', class: 'priority-medium' };
-    return { label: 'Low Priority', class: 'priority-low' };
-  };
-
-  const getLevelLabel = (level) => {
-    switch (level) {
-      case 1:
-        return '1 (Beginner)';
-      case 2:
-        return '2 (Basic)';
-      case 3:
-        return '3 (Intermediate)';
-      case 4:
-        return '4 (Advanced)';
-      case 5:
-        return '5 (Expert)';
-      default:
-        return '0 (Unassessed)';
-    }
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: shouldReduceMotion
-        ? { duration: 0.1 }
-        : { staggerChildren: 0.08, delayChildren: 0.1 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.35, ease: 'easeOut' },
-    },
-  };
+  const items = [...(analysisResult.items || [])].sort(
+    (a, b) => b.priority_score - a.priority_score || b.gap - a.gap,
+  );
 
   return (
-    <AnimatedPage className="form-page analysis-page-wrapper">
+    <AnimatedPage className="form-page">
       <div className="flow-card analysis-card">
-        {/* Header */}
         <div className="flow-header">
-          <div className="assessment-meta-row">
-            <span className="step-tag">Step 4 of 5</span>
-            <span className="career-pill">
-              {selectedCareer?.name || 'Target Career'}
-            </span>
-          </div>
-
-          <h1 className="flow-title">Your Career Readiness & Skill Gaps</h1>
-          <p className="flow-description">
-            Here is your current alignment with the benchmark requirements for{' '}
-            <strong>{selectedCareer?.name}</strong>.
-          </p>
+          <span className="step-tag">Step 4 of 5</span>
+          <h1 className="flow-title">Your career readiness</h1>
+          <p className="flow-description">A transparent comparison between your self-assessment and the selected career benchmark.</p>
         </div>
 
-        {/* Readiness Overview Panel */}
+        {sessionError && (
+          <div className="form-alert form-alert-error" role="alert">
+            <span>{sessionError}</span>
+            <button className="btn btn-secondary" type="button" onClick={restoreSession}>Retry</button>
+          </div>
+        )}
+
         <div className="readiness-summary-panel">
           <div className="readiness-metric-card">
             <div className="metric-header">
-              <span className="metric-title">Career Readiness</span>
-              <Award className="metric-icon" size={20} />
+              <span className="metric-title">Career Readiness</span><Award className="metric-icon" size={20} />
             </div>
-
-            <div className="metric-value-row">
-              <span className="metric-huge-number">
-                {displayPercent.toFixed(1)}%
-              </span>
-              <span
-                className={`readiness-pill ${
-                  targetPercent >= 75
-                    ? 'pill-high'
-                    : targetPercent >= 45
-                    ? 'pill-mid'
-                    : 'pill-starter'
-                }`}
-              >
-                {targetPercent >= 75
-                  ? 'Strong Alignment'
-                  : targetPercent >= 45
-                  ? 'In Progress'
-                  : 'Starting Out'}
-              </span>
-            </div>
-
-            {/* Smooth Animated Progress Bar */}
+            <div className="metric-value-row"><span className="metric-huge-number">{displayPercent.toFixed(1)}%</span></div>
             <div className="progress-bar-container">
               <motion.div
                 className="progress-bar-fill"
-                initial={shouldReduceMotion ? false : { width: '0%' }}
-                animate={{ width: `${targetPercent}%` }}
-                transition={
-                  shouldReduceMotion
-                    ? { duration: 0 }
-                    : { duration: 1.1, ease: [0.16, 1, 0.3, 1] }
-                }
+                initial={reduceMotion ? false : { width: '0%' }}
+                animate={{ width: `${analysisResult.readiness_percent}%` }}
+                transition={{ duration: reduceMotion ? 0 : 0.28 }}
               />
             </div>
-
             <div className="metric-footer-stats">
-              <span>
-                <strong>{analysisResult.skills_met}</strong> of{' '}
-                <strong>{analysisResult.total_skills}</strong> skills met
-              </span>
-              <span>
-                Target Track:{' '}
-                <strong>{selectedCareer?.name || 'Selected'}</strong>
-              </span>
+              <span><strong>{analysisResult.skills_met}</strong> of <strong>{analysisResult.total_skills}</strong> skills met</span>
+              <span>{selectedCareer?.name || 'Selected career'}</span>
             </div>
           </div>
         </div>
 
-        {/* Staggered Skill Results List */}
         <div className="analysis-breakdown-section">
           <div className="breakdown-headline">
-            <h2 className="breakdown-heading">Skill Evaluation Breakdown</h2>
-            <span className="breakdown-subtext">
-              Gaps indicate areas where further learning will elevate your
-              readiness.
-            </span>
+            <h2 className="breakdown-heading">Skill evaluation</h2>
+            <span className="breakdown-subtext">Priority score = gap × weight.</span>
           </div>
 
           <motion.div
             className="skill-results-grid"
-            variants={containerVariants}
             initial="hidden"
             animate="visible"
+            variants={{ visible: { transition: { staggerChildren: reduceMotion ? 0 : 0.05 } } }}
           >
-            {sortedItems.map((item) => {
-              const isMet = item.gap === 0;
-              const isLargeGap = item.gap >= 2;
-              const priority = getPriorityLabel(item);
-
-              return (
-                <motion.div
-                  key={item.id || item.skill_id}
-                  variants={itemVariants}
-                  className={`skill-result-card ${
-                    isMet ? 'card-skill-met' : ''
-                  } ${isLargeGap ? 'card-large-gap' : ''}`}
-                >
-                  <div className="skill-card-main">
-                    <div className="skill-title-group">
-                      <div className="skill-tag-row">
-                        <span className="skill-category-badge">
-                          {item.skill?.category || 'General'}
-                        </span>
-                        <span className={`priority-tag ${priority.class}`}>
-                          {priority.label}
-                        </span>
-                      </div>
-
-                      <h3 className="result-skill-name">
-                        {item.skill?.name || `Skill #${item.skill_id}`}
-                      </h3>
-                    </div>
-
-                    {/* Gap Badge with Subtle Success/Emphasis Animation */}
-                    <div className="gap-indicator-wrapper">
-                      {isMet ? (
-                        <motion.div
-                          className="gap-badge gap-badge-met"
-                          initial={shouldReduceMotion ? false : { scale: 0.9 }}
-                          animate={{ scale: 1 }}
-                          transition={{ duration: 0.25 }}
-                        >
-                          <CheckCircle2 size={16} />
-                          <span>Met</span>
-                        </motion.div>
-                      ) : (
-                        <div
-                          className={`gap-badge ${
-                            isLargeGap ? 'gap-badge-large' : 'gap-badge-regular'
-                          }`}
-                        >
-                          <AlertTriangle size={15} />
-                          <span>Gap: -{item.gap}</span>
-                        </div>
-                      )}
-                    </div>
+            {items.map((item) => (
+              <motion.div
+                key={item.id}
+                className={`skill-result-card ${item.gap === 0 ? 'card-skill-met' : ''}`}
+                variants={{
+                  hidden: { opacity: 0, y: reduceMotion ? 0 : 8 },
+                  visible: { opacity: 1, y: 0 },
+                }}
+                transition={{ duration: reduceMotion ? 0 : 0.24 }}
+              >
+                <div className="skill-card-main">
+                  <div>
+                    <span className="skill-category-badge">{item.skill?.category || 'General'}</span>
+                    <h3 className="result-skill-name">{item.skill?.name || `Skill #${item.skill_id}`}</h3>
                   </div>
-
-                  {/* Level Comparison */}
-                  <div className="level-comparison-box">
-                    <div className="level-row">
-                      <span className="level-label">Current Level:</span>
-                      <span className="level-value student-val">
-                        {getLevelLabel(item.student_level)}
-                      </span>
-                    </div>
-
-                    <div className="level-row">
-                      <span className="level-label">Required Level:</span>
-                      <span className="level-value required-val">
-                        {getLevelLabel(item.required_level)}
-                      </span>
-                    </div>
-
-                    {/* Mini Visual Gauge */}
-                    <div className="mini-gauge-track">
-                      {/* Required Marker */}
-                      <div
-                        className="gauge-benchmark-marker"
-                        style={{ left: `${(item.required_level / 5) * 100}%` }}
-                        title={`Required: Level ${item.required_level}`}
-                      />
-                      {/* Current Level Fill */}
-                      <motion.div
-                        className={`mini-gauge-fill ${
-                          isMet ? 'fill-met' : 'fill-gap'
-                        }`}
-                        initial={
-                          shouldReduceMotion ? false : { width: '0%' }
-                        }
-                        animate={{
-                          width: `${(item.student_level / 5) * 100}%`,
-                        }}
-                        transition={
-                          shouldReduceMotion
-                            ? { duration: 0 }
-                            : { duration: 0.6, ease: 'easeOut', delay: 0.2 }
-                        }
-                      />
-                    </div>
+                  {item.gap === 0 ? (
+                    <span className="gap-badge gap-badge-met"><CheckCircle2 size={16} /> Met</span>
+                  ) : (
+                    <span className="gap-badge gap-badge-regular"><AlertTriangle size={15} /> Gap: -{item.gap}</span>
+                  )}
+                </div>
+                <div className="level-comparison-box">
+                  <div className="level-row"><span className="level-label">Current</span><span className="level-value student-val">{levelLabel(item.student_level)}</span></div>
+                  <div className="level-row"><span className="level-label">Required</span><span className="level-value required-val">{levelLabel(item.required_level)}</span></div>
+                  <div className="mini-gauge-track">
+                    <div className="gauge-benchmark-marker" style={{ left: `${(item.required_level / 5) * 100}%` }} />
+                    <motion.div className={`mini-gauge-fill ${item.gap === 0 ? 'fill-met' : 'fill-gap'}`} initial={{ width: '0%' }} animate={{ width: `${(item.student_level / 5) * 100}%` }} transition={{ duration: reduceMotion ? 0 : 0.24 }} />
                   </div>
-                </motion.div>
-              );
-            })}
+                  <span className="form-hint">Priority score: {item.priority_score}</span>
+                </div>
+              </motion.div>
+            ))}
           </motion.div>
         </div>
 
-        {/* Action Controls */}
         <div className="form-actions">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => navigate('/skills')}
-          >
-            <ArrowLeft size={16} />
-            <span>Adjust Skills</span>
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-primary btn-glow"
-            onClick={() => navigate('/roadmap')}
-            id="continue-roadmap-btn"
-          >
-            <span>View Next Steps</span>
-            <ArrowRight size={16} />
-          </button>
+          <button type="button" className="btn btn-secondary" onClick={() => navigate('/skills')}><ArrowLeft size={16} /> Adjust skills</button>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/roadmap')}><span>Continue</span><ArrowRight size={16} /></button>
         </div>
       </div>
     </AnimatedPage>

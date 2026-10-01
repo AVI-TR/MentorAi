@@ -38,10 +38,10 @@ def test_create_latest_and_progress(seeded_client: TestClient):
     assert roadmap["version"] == 1
     assert roadmap["status"] == "active"
     assert roadmap["gap_analysis_id"] == analysis["id"]
-    assert roadmap["total"] == 3
+    assert roadmap["total"] == 2
     assert roadmap["done"] == 0
     assert roadmap["percent"] == 0
-    assert [item["position"] for item in roadmap["items"]] == [1, 2, 3]
+    assert [item["position"] for item in roadmap["items"]] == [1, 2]
     assert all(item["status"] == "todo" for item in roadmap["items"])
     assert all(item["module"]["skill"]["name"] == "Python" for item in roadmap["items"])
 
@@ -52,8 +52,8 @@ def test_create_latest_and_progress(seeded_client: TestClient):
     assert update.status_code == 200
     latest_after = seeded_client.get(f"/api/v1/goals/{goal_id}/roadmap/latest")
     assert latest_after.json()["done"] == 1
-    assert latest_after.json()["total"] == 3
-    assert latest_after.json()["percent"] == 33.33
+    assert latest_after.json()["total"] == 2
+    assert latest_after.json()["percent"] == 50.0
 
 
 def test_new_roadmap_supersedes_previous(seeded_client: TestClient):

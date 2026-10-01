@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator
 from app.schemas.career import SkillRead
 
 
@@ -23,6 +23,16 @@ class StudentSkillBatchItem(BaseModel):
     skill_id: int
     level: int = Field(..., ge=0, le=5, description="0 means no experience and deletes the persisted row.")
     source: str = Field("self_assessed", max_length=50)
+
+
+class StudentSkillBatchRequest(RootModel[List[StudentSkillBatchItem]]):
+    @field_validator("root")
+    @classmethod
+    def reject_duplicate_skill_ids(cls, value):
+        skill_ids = [item.skill_id for item in value]
+        if len(skill_ids) != len(set(skill_ids)):
+            raise ValueError("Each skill_id may appear only once in a batch.")
+        return value
 
 
 class StudentSkillRead(StudentSkillBase):

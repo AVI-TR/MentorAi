@@ -2,7 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.schemas.student_skill import StudentSkillBatchItem, StudentSkillCreate, StudentSkillDetailRead, StudentSkillRead, StudentSkillUpdate
+from app.schemas.student_skill import StudentSkillBatchRequest, StudentSkillCreate, StudentSkillDetailRead, StudentSkillRead, StudentSkillUpdate
 from app.services.student_skill_service import student_skill_service
 
 router = APIRouter()
@@ -19,8 +19,8 @@ def upsert_student_skill(user_id: int, skill_in: StudentSkillCreate, db: Session
 
 
 @router.put("/{user_id}/skills", response_model=List[StudentSkillRead], summary="Upsert assessed skills in one transaction")
-def replace_student_skills(user_id: int, skills: List[StudentSkillBatchItem], db: Session = Depends(get_db)):
-    return student_skill_service.replace_user_skills(db=db, user_id=user_id, skills=skills)
+def replace_student_skills(user_id: int, skills: StudentSkillBatchRequest, db: Session = Depends(get_db)):
+    return student_skill_service.replace_user_skills(db=db, user_id=user_id, skills=skills.root)
 
 
 @router.put("/{user_id}/skills/{skill_id}", response_model=StudentSkillRead, summary="Update level/source for a student skill")

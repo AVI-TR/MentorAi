@@ -70,7 +70,7 @@ export function MentorProvider({ children }) {
       } else {
         setProfile((prev) => ({ ...prev, email: user.email || '' }));
       }
-    } catch (error) {
+    } catch {
       if (error.status === 404 || error.status === 422) {
         clearStoredIds();
       } else {
@@ -81,7 +81,7 @@ export function MentorProvider({ children }) {
     }
   }, []);
 
-  useEffect(() => { restoreSession(); }, [restoreSession]);
+  useEffect(() => { const timer = window.setTimeout(() => { restoreSession(); }, 0); return () => window.clearTimeout(timer); }, [restoreSession]);
 
   const selectCareer = useCallback(async (career) => {
     if (!career) return;

@@ -71,7 +71,7 @@ export default function AnalysisPage() {
             <div className="metric-header">
               <span className="metric-title">Career Readiness</span><Award className="metric-icon" size={20} />
             </div>
-            <div className="metric-value-row"><span className="metric-huge-number">{displayPercent.toFixed(1)}%</span></div>
+            <div className="metric-value-row"><motion.span className="metric-huge-number">{displayPercent}</motion.span></div>
             <div className="progress-bar-container">
               <motion.div
                 className="progress-bar-fill"

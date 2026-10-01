@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, CheckCircle2, Briefcase, Sparkles, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Briefcase, AlertCircle } from 'lucide-react';
 import AnimatedPage from '../components/AnimatedPage';
-import { useMentor } from '../context/MentorContext';
+import { useMentor } from '../context/useMentor';
 
 export default function CareerGoalPage() {
   const navigate = useNavigate();
@@ -12,6 +12,8 @@ export default function CareerGoalPage() {
     selectCareer,
     isLoadingCareers,
     isLoadingDetails,
+    sessionError,
+    restoreSession,
   } = useMentor();
 
   const [selectionError, setSelectionError] = useState(null);
@@ -47,10 +49,18 @@ export default function CareerGoalPage() {
           </div>
         )}
 
+        {sessionError && (
+          <div className="form-alert form-alert-error" role="alert">
+            <span>{sessionError}</span>
+            <button type="button" className="btn btn-secondary" onClick={restoreSession}>Retry</button>
+          </div>
+        )}
+
         {isLoadingCareers ? (
-          <div className="career-loading-state">
-            <div className="loading-spinner" />
-            <p>Loading available career paths...</p>
+          <div className="skeleton-stack" aria-label="Loading career paths">
+            <div className="skeleton skeleton-card" />
+            <div className="skeleton skeleton-card" />
+            <div className="skeleton skeleton-card" />
           </div>
         ) : careers.length === 0 ? (
           <div className="career-empty-state">

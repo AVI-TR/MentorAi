@@ -1479,3 +1479,133 @@ body {
     gap: 12px;
   }
 }
+
+
+:focus-visible {
+  outline: 3px solid var(--accent-primary);
+  outline-offset: 3px;
+}
+
+.skeleton-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--border-subtle);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);
+  animation: skeleton-shimmer .9s ease-in-out infinite;
+}
+
+.skeleton-title { height: 32px; width: 55%; }
+.skeleton-line { height: 18px; width: 78%; }
+.skeleton-card { height: 88px; width: 100%; }
+
+@keyframes skeleton-shimmer {
+  to { transform: translateX(100%); }
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-app: #f7f9fc;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f1f5fb;
+    --bg-card-selected: #eaf2ff;
+    --bg-input: #ffffff;
+    --bg-input-focus: #ffffff;
+    --bg-pill: #edf3ff;
+    --border-subtle: #dbe3ef;
+    --border-card: #cbd5e1;
+    --border-hover: #94a3b8;
+    --border-selected: #2563eb;
+    --text-main: #172033;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --text-highlight: #1d4ed8;
+    --accent-primary: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-glow: rgba(37, 99, 235, .16);
+    --accent-glow-subtle: rgba(37, 99, 235, .08);
+    --status-green: #047857;
+    --status-green-bg: rgba(4, 120, 87, .10);
+    --status-amber: #b45309;
+    --status-amber-bg: rgba(180, 83, 9, .10);
+    --status-red: #b91c1c;
+    --status-red-bg: rgba(185, 28, 28, .08);
+    --shadow-card: 0 4px 20px -2px rgba(15, 23, 42, .10);
+  }
+
+  .app-nav {
+    background-color: rgba(255,255,255,.9);
+  }
+
+  .nav-brand,
+  .brand-name,
+  .welcome-title,
+  .skill-heading {
+    color: var(--text-main);
+  }
+
+  .btn-secondary {
+    background-color: #fff;
+  }
+
+  .proficiency-card,
+  .career-card {
+    background-color: var(--bg-card);
+  }
+}
+
+@media (max-width: 640px) {
+  .main-content {
+    padding-inline: 12px;
+  }
+
+  .progress-container {
+    padding-inline: 8px;
+  }
+
+  .flow-card {
+    padding: 24px 18px;
+  }
+
+  .step-label {
+    display: none;
+  }
+
+  .welcome-card {
+    padding: 34px 22px;
+  }
+
+  .welcome-title {
+    font-size: 30px;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

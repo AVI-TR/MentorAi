@@ -1,342 +1,165 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import {
-  ArrowLeft,
-  ArrowRight,
-  Sparkles,
-  CheckCircle2,
-  Check,
-  AlertCircle,
-  HelpCircle,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Sparkles, AlertCircle } from 'lucide-react';
 import AnimatedPage from '../components/AnimatedPage';
-import { useMentor } from '../context/MentorContext';
+import { useMentor } from '../context/useMentor';
 
-const PROFICIENCY_LEVELS = [
-  {
-    level: 1,
-    title: 'Beginner',
-    description: 'I know the basic concepts but need guidance.',
-  },
-  {
-    level: 2,
-    title: 'Basic',
-    description: 'I can perform simple tasks and handle small problems.',
-  },
-  {
-    level: 3,
-    title: 'Intermediate',
-    description: 'I can work independently on common problems.',
-  },
-  {
-    level: 4,
-    title: 'Advanced',
-    description: 'I can handle complex problems and understand trade-offs.',
-  },
-  {
-    level: 5,
-    title: 'Expert',
-    description:
-      'I have deep practical knowledge and can design, optimize, and guide others.',
-  },
+const LEVELS = [
+  { level: 0, title: 'No experience', description: 'I have not learned or used this skill yet.' },
+  { level: 1, title: 'Beginner', description: 'I know the basic concepts but need guidance.' },
+  { level: 2, title: 'Basic', description: 'I can perform simple tasks and handle small problems.' },
+  { level: 3, title: 'Working', description: 'I can work independently on common problems.' },
+  { level: 4, title: 'Proficient', description: 'I can handle complex problems and understand trade-offs.' },
+  { level: 5, title: 'Expert', description: 'I have deep practical knowledge and can design, optimize, and guide others.' },
 ];
 
 export default function SkillAssessmentPage() {
   const navigate = useNavigate();
-  const shouldReduceMotion = useReducedMotion();
+  const reduceMotion = useReducedMotion();
   const {
-    selectedCareer,
-    careerDetails,
-    skillLevels,
-    setSkillLevel,
-    runAnalysis,
-    isAnalyzing,
-    analysisError,
+    selectedCareer, careerDetails, skillLevels, setSkillLevel,
+    runAnalysis, isAnalyzing, analysisError,
   } = useMentor();
-
   const [currentSkillIndex, setCurrentSkillIndex] = useState(0);
   const [submitError, setSubmitError] = useState(null);
 
-  // If no career was selected yet, redirect to career goal page
   useEffect(() => {
-    if (!selectedCareer) {
-      navigate('/goal');
-    }
+    if (!selectedCareer) navigate('/goal', { replace: true });
   }, [selectedCareer, navigate]);
 
-  const requiredSkills = careerDetails?.career_skills || [];
-  const currentCareerSkill = requiredSkills[currentSkillIndex];
-  const currentSkill = currentCareerSkill?.skill;
+  const requiredSkills = careerDetails?.career_skills ?? [];
+  const current = requiredSkills[currentSkillIndex];
+  const currentLevel = current ? skillLevels[current.skill_id] : undefined;
+  const allRated = requiredSkills.length > 0 && requiredSkills.every((skill) => skillLevels[skill.skill_id] !== undefined);
 
-  const currentLevel = currentCareerSkill
-    ? skillLevels[currentCareerSkill.skill_id] || 1
-    : 1;
-
-  const handleSelectLevel = (level) => {
-    if (currentCareerSkill) {
-      setSkillLevel(currentCareerSkill.skill_id, level);
-    }
+  const choose = (level) => {
+    if (current) setSkillLevel(current.skill_id, level);
   };
 
-  const handlePrev = () => {
-    if (currentSkillIndex > 0) {
-      setCurrentSkillIndex((prev) => prev - 1);
-    } else {
-      navigate('/goal');
-    }
-  };
-
-  const handleNext = () => {
-    if (currentSkillIndex < requiredSkills.length - 1) {
-      setCurrentSkillIndex((prev) => prev + 1);
-    }
-  };
-
-  const handleCompleteAssessment = async () => {
+  const complete = async () => {
     setSubmitError(null);
+    if (!allRated) {
+      setSubmitError('Rate every skill before continuing.');
+      return;
+    }
     try {
       await runAnalysis();
       navigate('/analysis');
-    } catch (err) {
-      setSubmitError(err.message || 'Failed to complete analysis.');
+    } catch (error) {
+      setSubmitError(error.message || 'Unable to complete the analysis.');
     }
   };
 
-  if (!selectedCareer || !careerDetails || requiredSkills.length === 0) {
+  if (!selectedCareer || !careerDetails || !current) {
     return (
       <AnimatedPage className="form-page">
         <div className="flow-card">
-          <div className="career-loading-state">
-            <div className="loading-spinner" />
-            <p>Loading required skills for {selectedCareer?.name || 'career track'}...</p>
+          <div className="skeleton-stack" aria-label="Loading skills">
+            <div className="skeleton skeleton-title" />
+            <div className="skeleton skeleton-line" />
+            <div className="skeleton skeleton-card" />
+            <div className="skeleton skeleton-card" />
           </div>
         </div>
       </AnimatedPage>
     );
   }
 
-  const isLastSkill = currentSkillIndex === requiredSkills.length - 1;
-
-  // Variants for smooth transition between skills
-  const skillCardVariants = {
-    enter: (direction) =>
-      shouldReduceMotion
-        ? { opacity: 0 }
-        : { opacity: 0, x: direction > 0 ? 28 : -28 },
-    center: {
-      opacity: 1,
-      x: 0,
-      transition: shouldReduceMotion
-        ? { duration: 0.05 }
-        : { duration: 0.28, ease: 'easeOut' },
-    },
-    exit: (direction) =>
-      shouldReduceMotion
-        ? { opacity: 0 }
-        : {
-            opacity: 0,
-            x: direction > 0 ? -28 : 28,
-            transition: { duration: 0.22, ease: 'easeIn' },
-          },
-  };
-
   return (
     <AnimatedPage className="form-page">
       <div className="flow-card assessment-container">
         <div className="flow-header">
-          <div className="assessment-meta-row">
-            <span className="step-tag">Step 3 of 5</span>
-            <span className="career-pill">{selectedCareer.name}</span>
-          </div>
-
-          <h1 className="flow-title">Let's understand your current level</h1>
-          <p className="flow-description emphasis-note">
-            This is your self-assessment. Choose the level that feels closest.
-          </p>
+          <span className="step-tag">Step 3 of 5</span>
+          <h1 className="flow-title">Let&apos;s understand your current level</h1>
+          <p className="flow-description">This is your self-assessment. There is no default — choose the level that feels closest.</p>
         </div>
 
-        {/* Skill Progress Bar & Chips */}
-        <div className="skill-stepper-nav" aria-label="Skills navigation">
+        <div className="skill-stepper-nav">
           <div className="stepper-count-row">
-            <span className="stepper-label">
-              Skill <strong>{currentSkillIndex + 1}</strong> of{' '}
-              <strong>{requiredSkills.length}</strong>
-            </span>
-            <span className="stepper-skill-name">
-              {currentSkill?.name}
-            </span>
+            <span>Skill <strong>{currentSkillIndex + 1}</strong> of <strong>{requiredSkills.length}</strong></span>
+            <span className="stepper-skill-name">{current.skill?.name}</span>
           </div>
-
           <div className="skill-chips-row">
-            {requiredSkills.map((cs, index) => {
-              const isAssessed = !!skillLevels[cs.skill_id];
-              const isCurrent = index === currentSkillIndex;
-
-              return (
-                <button
-                  key={cs.skill_id}
-                  type="button"
-                  className={`skill-chip ${isCurrent ? 'skill-chip-current' : ''} ${
-                    isAssessed ? 'skill-chip-assessed' : ''
-                  }`}
-                  onClick={() => setCurrentSkillIndex(index)}
-                  title={cs.skill?.name}
-                >
-                  <span className="chip-dot" />
-                  <span className="chip-label">{cs.skill?.name || `Skill ${index + 1}`}</span>
-                </button>
-              );
-            })}
+            {requiredSkills.map((skill, index) => (
+              <button
+                key={skill.skill_id}
+                type="button"
+                className={`skill-chip ${index === currentSkillIndex ? 'skill-chip-current' : ''} ${skillLevels[skill.skill_id] !== undefined ? 'skill-chip-assessed' : ''}`}
+                onClick={() => setCurrentSkillIndex(index)}
+              >
+                <span className="chip-dot" />
+                <span>{skill.skill?.name}</span>
+              </button>
+            ))}
           </div>
         </div>
 
         {(submitError || analysisError) && (
           <div className="form-alert form-alert-error" role="alert">
-            <AlertCircle size={18} className="alert-icon" />
+            <AlertCircle size={18} />
             <span>{submitError || analysisError}</span>
           </div>
         )}
 
-        {/* Animated Skill Assessment Section */}
-        <div className="skill-animated-wrapper">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={currentCareerSkill.skill_id}
-              variants={skillCardVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              className="skill-content-panel"
-            >
-              <div className="skill-banner">
-                <div className="skill-badge-category">
-                  {currentSkill?.category || 'Core Skill'}
-                </div>
-                <h2 className="skill-heading">{currentSkill?.name}</h2>
-              </div>
-
-              <div
-                className="proficiency-options-list"
-                role="radiogroup"
-                aria-label={`Proficiency level for ${currentSkill?.name}`}
-              >
-                {PROFICIENCY_LEVELS.map((lvl) => {
-                  const isSelected = currentLevel === lvl.level;
-
-                  return (
-                    <motion.div
-                      key={lvl.level}
-                      role="radio"
-                      aria-checked={isSelected}
-                      tabIndex={0}
-                      className={`proficiency-card ${
-                        isSelected ? 'proficiency-card-selected' : ''
-                      }`}
-                      onClick={() => handleSelectLevel(lvl.level)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleSelectLevel(lvl.level);
-                        }
-                      }}
-                      layout={!shouldReduceMotion}
-                      transition={
-                        shouldReduceMotion
-                          ? { duration: 0 }
-                          : { duration: 0.22, ease: 'easeOut' }
-                      }
-                    >
-                      <div className="proficiency-header">
-                        <div className="proficiency-left">
-                          <span
-                            className={`level-number-badge ${
-                              isSelected ? 'level-badge-active' : ''
-                            }`}
-                          >
-                            {lvl.level}
-                          </span>
-                          <span className="proficiency-title">
-                            {lvl.level} — {lvl.title}
-                          </span>
-                        </div>
-
-                        <div
-                          className={`proficiency-radio ${
-                            isSelected ? 'radio-active' : ''
-                          }`}
-                        >
-                          {isSelected && <Check size={14} className="check-svg" />}
-                        </div>
-                      </div>
-
-                      {/* Explanation text fades and slides in smoothly */}
-                      <AnimatePresence>
-                        <motion.p
-                          className="proficiency-desc"
-                          initial={
-                            shouldReduceMotion
-                              ? false
-                              : { opacity: 0.7, y: 2 }
-                          }
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          "{lvl.description}"
-                        </motion.p>
-                      </AnimatePresence>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* Skill Navigation Controls */}
-        <div className="form-actions skill-actions">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={handlePrev}
-            disabled={isAnalyzing}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={current.skill_id}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -20 }}
+            transition={{ duration: reduceMotion ? 0 : 0.24 }}
           >
-            <ArrowLeft size={16} />
-            <span>
-              {currentSkillIndex === 0 ? 'Back to Goal' : 'Previous Skill'}
-            </span>
+            <div className="skill-banner">
+              <div className="skill-badge-category">{current.skill?.category || 'Core Skill'}</div>
+              <h2 className="skill-heading">{current.skill?.name}</h2>
+              <p className="form-hint">Choose one level. Your answer is a self-estimate.</p>
+            </div>
+
+            <div className="proficiency-options-list" role="radiogroup" aria-label={`Proficiency for ${current.skill?.name}`}>
+              {LEVELS.map((level) => {
+                const selected = currentLevel === level.level;
+                return (
+                  <motion.button
+                    key={level.level}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    className={`proficiency-card ${selected ? 'proficiency-card-selected' : ''}`}
+                    onClick={() => choose(level.level)}
+                    whileHover={reduceMotion ? undefined : { y: -2 }}
+                    whileTap={reduceMotion ? undefined : { scale: 0.99 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.18 }}
+                  >
+                    <div className="proficiency-header">
+                      <div className="proficiency-left">
+                        <span className={`level-number-badge ${selected ? 'level-badge-active' : ''}`}>{level.level}</span>
+                        <span className="proficiency-title">{level.title}</span>
+                      </div>
+                      <span className={`proficiency-radio ${selected ? 'radio-active' : ''}`}>
+                        {selected && <Check size={14} />}
+                      </span>
+                    </div>
+                    <p className="proficiency-desc">{level.description}</p>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        <div className="form-actions skill-actions">
+          <button type="button" className="btn btn-secondary" onClick={() => currentSkillIndex ? setCurrentSkillIndex((i) => i - 1) : navigate('/goal')} disabled={isAnalyzing}>
+            <ArrowLeft size={16} /> <span>{currentSkillIndex ? 'Previous Skill' : 'Back to Goal'}</span>
           </button>
 
-          {!isLastSkill ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleNext}
-              disabled={isAnalyzing}
-              id="next-skill-btn"
-            >
-              <span>Next Skill</span>
-              <ArrowRight size={16} />
+          {currentSkillIndex < requiredSkills.length - 1 ? (
+            <button type="button" className="btn btn-primary" onClick={() => setCurrentSkillIndex((i) => i + 1)} disabled={currentLevel === undefined || isAnalyzing}>
+              <span>Next Skill</span><ArrowRight size={16} />
             </button>
           ) : (
-            <button
-              type="button"
-              className="btn btn-primary btn-glow"
-              onClick={handleCompleteAssessment}
-              disabled={isAnalyzing}
-              id="complete-assessment-btn"
-            >
-              {isAnalyzing ? (
-                <>
-                  <div className="btn-spinner" />
-                  <span>Analyzing Your Skills...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles size={16} />
-                  <span>Analyze My Skills</span>
-                </>
-              )}
+            <button type="button" className="btn btn-primary" onClick={complete} disabled={!allRated || isAnalyzing}>
+              <Sparkles size={16} /><span>{isAnalyzing ? 'Analyzing…' : 'Analyze My Skills'}</span>
             </button>
           )}
         </div>

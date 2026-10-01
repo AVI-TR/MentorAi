@@ -14,28 +14,20 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     setup_logging()
     logger.info("Initializing application...")
-
-    # Initialize all registered ORM models
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database schemas initialized.")
-
-    with SessionLocal() as db:
-        seed_database(db)
-    logger.info("Default catalog data seeded.")
-
+    if settings.ENVIRONMENT.lower() != "test":
+        Base.metadata.create_all(bind=engine)
+        with SessionLocal() as db:
+            seed_database(db)
+        logger.info("Database schemas initialized and catalog seeded.")
+    else:
+        logger.info("Test environment: skipping application database initialization and seeding.")
     yield
-
-    # Shutdown
-    logger.info("Shutting down application...")
     engine.dispose()
-    logger.info("Database connections closed.")
 
 
 def create_application() -> FastAPI:
-    """FastAPI Application Factory."""
     app = FastAPI(
         title=settings.PROJECT_NAME,
         version=settings.VERSION,
@@ -45,8 +37,6 @@ def create_application() -> FastAPI:
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
         lifespan=lifespan,
     )
-
-    # Configure CORS: explicit localhost origins, credentials allowed only with explicit origins
     if settings.BACKEND_CORS_ORIGINS:
         app.add_middleware(
             CORSMiddleware,
@@ -55,8 +45,6 @@ def create_application() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-
-    # Register API Routers
     app.include_router(api_router, prefix=settings.API_V1_STR)
 
     @app.get("/", tags=["Root"])
@@ -75,10 +63,4 @@ app = create_application()
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run(
-        "app.main:app",
-        host=settings.HOST,
-        port=settings.PORT,
-        reload=settings.DEBUG,
-    )
+    uvicorn.run("app.main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)

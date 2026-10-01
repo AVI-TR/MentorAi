@@ -3,7 +3,7 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 from app.core.exceptions import ConflictException, NotFoundException
-from app.db.seed import seed_learning_modules_for_skill
+from app.services.module_service import seed_learning_modules_for_skill
 from app.models.career import Career, CareerSkill, Skill
 from app.schemas.career import CareerCreate, CareerSkillCreate, SkillCreate
 

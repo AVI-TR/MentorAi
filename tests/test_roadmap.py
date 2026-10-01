@@ -81,6 +81,22 @@ def test_new_roadmap_supersedes_previous(seeded_client: TestClient):
     assert old_item_update.status_code == 404
 
 
+def test_superseded_roadmap_item_is_rejected(seeded_client: TestClient):
+    _, goal_id, _ = _setup_goal_with_analysis(seeded_client)
+    first = seeded_client.post(f"/api/v1/goals/{goal_id}/roadmap").json()
+    first_item = first["items"][0]
+
+    second = seeded_client.post(f"/api/v1/goals/{goal_id}/roadmap")
+    assert second.status_code == 201
+    assert second.json()["id"] != first["id"]
+
+    response = seeded_client.patch(
+        f"/api/v1/goals/{goal_id}/roadmap/items/{first_item['id']}",
+        json={"status": "done"},
+    )
+    assert response.status_code == 404
+
+
 def test_roadmap_item_must_belong_to_goal(seeded_client: TestClient):
     _, goal_one, _ = _setup_goal_with_analysis(seeded_client)
     first = seeded_client.post(f"/api/v1/goals/{goal_one}/roadmap").json()

@@ -123,6 +123,19 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 ---
 
+## Run frontend
+
+From the repository root:
+
+```bash
+cd frontend
+cp .env.example .env
+npm ci
+npm run dev
+```
+
+The frontend uses the FastAPI backend URL configured by `VITE_API_URL`.
+
 ## Running Tests
 
 Execute the automated test suite with `pytest`:

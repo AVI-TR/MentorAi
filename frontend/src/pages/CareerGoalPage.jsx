@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, CheckCircle2, Briefcase, Sparkles, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Briefcase, AlertCircle } from 'lucide-react';
 import AnimatedPage from '../components/AnimatedPage';
-import { useMentor } from '../context/MentorContext';
+import { useMentor } from '../context/useMentor';
 
 export default function CareerGoalPage() {
   const navigate = useNavigate();

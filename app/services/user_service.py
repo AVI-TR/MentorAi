@@ -1,5 +1,5 @@
 from typing import Optional, Tuple
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 from app.core.exceptions import NotFoundException
 from app.models.user import StudentProfile, User
@@ -14,7 +14,8 @@ class UserService:
         return user
 
     def get_user_by_email(self, db: Session, email: str) -> Optional[User]:
-        return db.scalar(select(User).where(User.email == email))
+        normalized_email = email.strip().lower()
+        return db.scalar(select(User).where(func.lower(User.email) == normalized_email))
 
     def create_user(self, db: Session, user_in: UserCreate) -> Tuple[User, bool]:
         existing = self.get_user_by_email(db, user_in.email)

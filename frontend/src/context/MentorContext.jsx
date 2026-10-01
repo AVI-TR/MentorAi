@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 
-const MentorContext = createContext(null);
+export const MentorContext = createContext(null);
 const USER_ID_KEY = 'mentor:userId';
 const GOAL_ID_KEY = 'mentor:goalId';
 
@@ -177,8 +177,3 @@ export function MentorProvider({ children }) {
   return <MentorContext.Provider value={value}>{children}</MentorContext.Provider>;
 }
 
-export function useMentor() {
-  const context = React.useContext(MentorContext);
-  if (!context) throw new Error('useMentor must be used within a MentorProvider');
-  return context;
-}

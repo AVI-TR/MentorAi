@@ -13,13 +13,14 @@ def test_create_and_get_user(client: TestClient):
     assert get_res.json()["email"] == "student@example.com"
 
 
-def test_idempotent_user_creation(client: TestClient):
-    first = client.post("/api/v1/users", json={"email": "unique@example.com"})
+def test_idempotent_user_creation_and_email_normalization(client: TestClient):
+    first = client.post("/api/v1/users", json={"email": "  Unique@Example.com "})
     assert first.status_code == 201
 
     second = client.post("/api/v1/users", json={"email": "unique@example.com"})
     assert second.status_code == 200
     assert second.json()["id"] == first.json()["id"]
+    assert first.json()["email"] == "unique@example.com"
 
     list_res = client.get("/api/v1/users")
     assert list_res.status_code != 200

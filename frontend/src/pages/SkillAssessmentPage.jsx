@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, Sparkles, AlertCircle } from 'lucide-react';
 import AnimatedPage from '../components/AnimatedPage';
-import { useMentor } from '../context/MentorContext';
+import { useMentor } from '../context/useMentor';
 
 const LEVELS = [
   { level: 0, title: 'No experience', description: 'I have not learned or used this skill yet.' },
@@ -28,13 +28,10 @@ export default function SkillAssessmentPage() {
     if (!selectedCareer) navigate('/goal', { replace: true });
   }, [selectedCareer, navigate]);
 
-  const requiredSkills = careerDetails?.career_skills || [];
+  const requiredSkills = careerDetails?.career_skills ?? [];
   const current = requiredSkills[currentSkillIndex];
   const currentLevel = current ? skillLevels[current.skill_id] : undefined;
-  const allRated = useMemo(
-    () => requiredSkills.length > 0 && requiredSkills.every((skill) => skillLevels[skill.skill_id] !== undefined),
-    [requiredSkills, skillLevels],
-  );
+  const allRated = requiredSkills.length > 0 && requiredSkills.every((skill) => skillLevels[skill.skill_id] !== undefined);
 
   const choose = (level) => {
     if (current) setSkillLevel(current.skill_id, level);

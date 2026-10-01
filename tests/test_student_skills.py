@@ -46,6 +46,9 @@ def test_batch_student_skill_upsert_is_atomic(seeded_client):
     )
     assert invalid_batch.status_code == 404
 
+    duplicate_batch = seeded_client.put(f"/api/v1/users/{user_id}/skills", json=[{"skill_id": python_id, "level": 4, "source": "self_assessed"}, {"skill_id": python_id, "level": 5, "source": "self_assessed"}])
+    assert duplicate_batch.status_code == 422
+
     current = {item["skill_id"]: item for item in seeded_client.get(f"/api/v1/users/{user_id}/skills").json()}
     assert current[python_id]["level"] == 3
     assert current[fastapi_id]["level"] == 4

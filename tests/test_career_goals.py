@@ -32,6 +32,11 @@ def test_active_goal_rule(seeded_client: TestClient):
     assert by_id[second_goal["id"]]["status"] == "active"
     assert sum(goal["status"] == "active" for goal in goals) == 1
 
+    reactivated = seeded_client.post(f"/api/v1/users/{user_id}/goals", json={"career_id": backend_id, "status": "active"})
+    assert reactivated.status_code == 200
+    assert reactivated.json()["id"] == first_goal["id"]
+    assert reactivated.json()["status"] == "active"
+
 
 def test_career_goals_lifecycle(seeded_client: TestClient):
     user_id = seeded_client.post("/api/v1/users", json={"email": "goal_user@example.com"}).json()["id"]

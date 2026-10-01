@@ -1,7 +1,7 @@
 from typing import List, Sequence
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
-from app.core.exceptions import ConflictException, NotFoundException
+from app.core.exceptions import NotFoundException
 from app.models.student_skill import StudentSkill
 from app.schemas.student_skill import StudentSkillBatchItem, StudentSkillCreate, StudentSkillUpdate
 from app.services.catalog_service import catalog_service
@@ -36,14 +36,14 @@ class StudentSkillService:
     def replace_user_skills(self, db: Session, user_id: int, skills: Sequence[StudentSkillBatchItem]) -> List[StudentSkill]:
         user_service.get_user(db, user_id)
         skill_ids = [item.skill_id for item in skills]
-        if len(skill_ids) != len(set(skill_ids)):
-            raise ConflictException("Each skill_id may appear only once in a batch.")
 
-        # Validate every reference before touching an existing StudentSkill row.
         for skill_id in skill_ids:
             catalog_service.get_skill(db, skill_id)
 
-        existing = list(db.scalars(select(StudentSkill).where(StudentSkill.user_id == user_id, StudentSkill.skill_id.in_(skill_ids))).all()) if skill_ids else []
+        existing = (
+            list(db.scalars(select(StudentSkill).where(StudentSkill.user_id == user_id, StudentSkill.skill_id.in_(skill_ids))).all())
+            if skill_ids else []
+        )
         by_skill = {row.skill_id: row for row in existing}
 
         try:
@@ -64,7 +64,10 @@ class StudentSkillService:
             db.rollback()
             raise
 
-        refreshed = list(db.scalars(select(StudentSkill).options(selectinload(StudentSkill.skill)).where(StudentSkill.user_id == user_id, StudentSkill.skill_id.in_(skill_ids))).all()) if skill_ids else []
+        refreshed = (
+            list(db.scalars(select(StudentSkill).options(selectinload(StudentSkill.skill)).where(StudentSkill.user_id == user_id, StudentSkill.skill_id.in_(skill_ids))).all())
+            if skill_ids else []
+        )
         refreshed_by_skill = {row.skill_id: row for row in refreshed}
         return [refreshed_by_skill[item.skill_id] for item in skills if item.level > 0]
 
@@ -78,7 +81,7 @@ class StudentSkillService:
 
     def delete_user_skill(self, db: Session, user_id: int, skill_id: int) -> None:
         row = self.get_user_skill(db, user_id, skill_id)
-        db.execute(delete(StudentSkill).where(StudentSkill.user_id == user_id, StudentSkill.skill_id == skill_id))
+        db.delete(row)
         db.commit()
 
 

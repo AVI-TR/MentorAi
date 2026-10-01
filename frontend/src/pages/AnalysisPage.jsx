@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, useReducedMotion } from 'framer-motion';
+import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
 import { ArrowLeft, ArrowRight, CheckCircle2, AlertTriangle, Award } from 'lucide-react';
 import AnimatedPage from '../components/AnimatedPage';
-import { useMentor } from '../context/MentorContext';
+import { useMentor } from '../context/useMentor';
 
 const levelLabel = (level) => ({
   0: '0 (No experience)', 1: '1 (Beginner)', 2: '2 (Basic)',
@@ -14,7 +14,8 @@ export default function AnalysisPage() {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
   const { analysisResult, selectedCareer, sessionLoading, sessionError, restoreSession } = useMentor();
-  const [displayPercent, setDisplayPercent] = useState(0);
+  const readinessValue = useMotionValue(0);
+  const displayPercent = useTransform(readinessValue, (value) => `${value.toFixed(1)}%`);
 
   useEffect(() => {
     if (!sessionLoading && !analysisResult) navigate('/skills', { replace: true });
@@ -22,21 +23,14 @@ export default function AnalysisPage() {
 
   useEffect(() => {
     const target = analysisResult?.readiness_percent ?? 0;
+    readinessValue.set(0);
     if (reduceMotion) {
-      setDisplayPercent(target);
+      readinessValue.set(target);
       return undefined;
     }
-    const start = performance.now();
-    const duration = 280;
-    let frame;
-    const tick = (now) => {
-      const progress = Math.min((now - start) / duration, 1);
-      setDisplayPercent(target * (1 - Math.pow(1 - progress, 3)));
-      if (progress < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [analysisResult?.readiness_percent, reduceMotion]);
+    const controls = animate(readinessValue, target, { duration: 0.28, ease: 'easeOut' });
+    return () => controls.stop();
+  }, [analysisResult?.readiness_percent, reduceMotion, readinessValue]);
 
   if (sessionLoading || !analysisResult) {
     return (

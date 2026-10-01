@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Compass } from 'lucide-react';
-import { useMentor } from '../context/MentorContext';
+import { useMentor } from '../context/useMentor';
 
 export default function Navbar() {
   const location = useLocation();

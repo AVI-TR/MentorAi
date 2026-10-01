@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Compass, ArrowLeft, RotateCcw } from 'lucide-react';
 import AnimatedPage from '../components/AnimatedPage';
-import { useMentor } from '../context/MentorContext';
+import { useMentor } from '../context/useMentor';
 
 export default function RoadmapPage() {
   const navigate = useNavigate();

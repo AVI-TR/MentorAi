@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 from app.core.exceptions import NotFoundException
@@ -20,19 +20,53 @@ class CareerGoalService:
             raise NotFoundException(f"Career goal with id {goal_id} not found for user {user_id}.")
         return goal
 
-    def create_user_goal(self, db: Session, user_id: int, goal_in: CareerGoalCreate) -> CareerGoal:
+    def create_user_goal(self, db: Session, user_id: int, goal_in: CareerGoalCreate) -> Tuple[CareerGoal, bool]:
         user_service.get_user(db, user_id)
         catalog_service.get_career(db, goal_in.career_id)
 
         if goal_in.status == "active":
-            active_goals = list(db.scalars(select(CareerGoal).options(selectinload(CareerGoal.career)).where(CareerGoal.user_id == user_id, CareerGoal.status == "active")).all())
-            matching = next((goal for goal in active_goals if goal.career_id == goal_in.career_id), None)
-            if matching:
-                return matching
-            for goal in active_goals:
-                goal.status = "paused"
+            goals = list(db.scalars(
+                select(CareerGoal)
+                .options(selectinload(CareerGoal.career))
+                .where(
+                    CareerGoal.user_id == user_id,
+                    CareerGoal.status.in_(("active", "paused")),
+                )
+            ).all())
 
-        goal = CareerGoal(user_id=user_id, career_id=goal_in.career_id, target_date=goal_in.target_date, status=goal_in.status)
+            matching_active = next(
+                (goal for goal in goals if goal.status == "active" and goal.career_id == goal_in.career_id),
+                None,
+            )
+            if matching_active:
+                return matching_active, False
+
+            matching_paused = next(
+                (goal for goal in goals if goal.status == "paused" and goal.career_id == goal_in.career_id),
+                None,
+            )
+
+            for goal in goals:
+                if goal.status == "active":
+                    goal.status = "paused"
+
+            if matching_paused:
+                matching_paused.status = "active"
+                matching_paused.target_date = goal_in.target_date
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+                    raise
+                db.refresh(matching_paused)
+                return matching_paused, False
+
+        goal = CareerGoal(
+            user_id=user_id,
+            career_id=goal_in.career_id,
+            target_date=goal_in.target_date,
+            status=goal_in.status,
+        )
         db.add(goal)
         try:
             db.commit()
@@ -40,7 +74,7 @@ class CareerGoalService:
             db.rollback()
             raise
         db.refresh(goal)
-        return goal
+        return goal, True
 
     def update_user_goal(self, db: Session, user_id: int, goal_id: int, goal_in: CareerGoalUpdate) -> CareerGoal:
         goal = self.get_user_goal(db, user_id, goal_id)

@@ -9,39 +9,52 @@ app/
 ├── api/          # HTTP transport layer: routing, parameter extraction, status codes
 ├── schemas/      # Pydantic models: request/response data contracts and serialization
 ├── models/       # SQLAlchemy ORM entity definitions and relationships
-├── services/     # Business logic layer: orchestrates domain flows and transaction boundaries
-├── core/         # Cross-cutting concerns: config (Pydantic Settings), logging, exceptions
+├── services/     # Business logic layer: domain flows and transaction boundaries
+├── core/         # Cross-cutting concerns: config, logging, exceptions
 └── db/           # Persistence foundations: engine, session management, base models
 ```
-
----
 
 ## 2. Core Architectural Decisions
 
 ### Synchronous SQLAlchemy
 * **Decision**: Use synchronous SQLAlchemy 2.0 with standard blocking sessions.
-* **Rationale**: Simplifies transaction lifecycles, debugging, and service logic without async overhead or greenlet complexity, perfectly suited for the relational workload and roadmap generation pipelines.
 * **Default URL**: `sqlite:///./mentor_ai.db`
 
 ### Transaction Ownership & Session Lifecycle
-* **Decision**: Routers contain **no business logic**.
-* **Services Own Transactions**: Services are responsible for initiating operations, executing domain rules, and committing transactions (`db.commit()`).
-* **`get_db` Lifecycle**: The `get_db` dependency opens a new session, yields it to the request handler, rolls back on unhandled exceptions (`db.rollback()`), and guarantees session cleanup (`db.close()`). `get_db` does **not** auto-commit.
+* **Decision**: Routers contain no business logic.
+* **Services Own Transactions**: Services execute domain rules and own transaction boundaries.
+* **`get_db` Lifecycle**: The dependency opens a session, yields it, rolls back on unhandled exceptions, and guarantees cleanup.
+
+### Skill Assessment Levels
+Mentor AI uses a six-level self-assessment scale:
+
+| Level | Meaning |
+|---|---|
+| 0 | None / no experience |
+| 1 | Beginner |
+| 2 | Basic |
+| 3 | Working |
+| 4 | Proficient |
+| 5 | Expert |
+
+A missing persisted student skill is interpreted as level **0** by the gap engine. Level 0 is therefore represented by absence of a `StudentSkill` row; the batch skills API accepts level 0 and removes that row.
+
+### Identity Limitation
+Email-only identity is a known MVP limitation. The current system uses email as the user lookup key and does not yet provide authentication, verified identity, or account/session security.
 
 ### Primary Keys & Model Standards
-* **Decision**: Use integer autoincrement primary keys consistently across all entity models (`PrimaryKeyMixin` with `id: Mapped[int]`).
-* **Auditability**: Entities requiring creation and modification tracking inherit from `TimestampMixin` (`created_at`, `updated_at`).
+* **Decision**: Use integer autoincrement primary keys consistently.
+* **Auditability**: Entities requiring creation/modification tracking inherit from `TimestampMixin`.
 
 ### Central Model Registration
 * **Decision**: All ORM models are registered in `app/models/__init__.py`.
-* **Rationale**: Guarantees that `Base.metadata.create_all(bind=engine)` and future migration tools (Alembic) discover all entity schemas at startup without missing tables.
 
 ### Security & CORS
-* **Decision**: Restrict CORS to explicit local development origins (`http://localhost:3000`, `http://localhost:5173`, `http://127.0.0.1:3000`, `http://127.0.0.1:5173`).
-* **Rationale**: Prevent wildcard (`*`) origins when credentials/cookies are enabled, adhering to strict CORS security standards.
+* **Decision**: Restrict CORS to explicit local development origins.
 
 ### Environment Defaults
-* **`DEBUG`**: `False` (explicitly enabled only for local development debugging).
-* **`HOST`**: `127.0.0.1` (safe local loopback default).
+* **`ENVIRONMENT`**: `development` by default; tests set it to `test`.
+* **`DEBUG`**: `False`.
+* **`HOST`**: `127.0.0.1`.
 * **`PORT`**: `8000`.
-* **`SQL_ECHO`**: `False` (SQL statement echo disabled by default to avoid noisy logging).
+* **`SQL_ECHO`**: `False`.

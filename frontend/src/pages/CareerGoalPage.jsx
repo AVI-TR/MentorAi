@@ -12,6 +12,8 @@ export default function CareerGoalPage() {
     selectCareer,
     isLoadingCareers,
     isLoadingDetails,
+    sessionError,
+    restoreSession,
   } = useMentor();
 
   const [selectionError, setSelectionError] = useState(null);
@@ -47,10 +49,18 @@ export default function CareerGoalPage() {
           </div>
         )}
 
+        {sessionError && (
+          <div className="form-alert form-alert-error" role="alert">
+            <span>{sessionError}</span>
+            <button type="button" className="btn btn-secondary" onClick={restoreSession}>Retry</button>
+          </div>
+        )}
+
         {isLoadingCareers ? (
-          <div className="career-loading-state">
-            <div className="loading-spinner" />
-            <p>Loading available career paths...</p>
+          <div className="skeleton-stack" aria-label="Loading career paths">
+            <div className="skeleton skeleton-card" />
+            <div className="skeleton skeleton-card" />
+            <div className="skeleton skeleton-card" />
           </div>
         ) : careers.length === 0 ? (
           <div className="career-empty-state">

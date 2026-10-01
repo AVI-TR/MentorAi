@@ -37,7 +37,7 @@ Mentor AI uses a six-level self-assessment scale:
 | 4 | Proficient |
 | 5 | Expert |
 
-A missing persisted student skill is interpreted as level **0** by the gap engine. Level 0 is therefore represented by absence of a `StudentSkill` row; the batch skills API accepts level 0 and removes that row.
+A missing persisted student skill is interpreted as level **0** by the gap engine. Level 0 is therefore represented by absence of a `StudentSkill` row; the batch skills API accepts level 0 and removes that row. Module completion does not change student skill level until quiz mastery exists (planned).
 
 ### Identity Limitation
 Email-only identity is a known MVP limitation. The current system uses email as the user lookup key and does not yet provide authentication, verified identity, or account/session security.

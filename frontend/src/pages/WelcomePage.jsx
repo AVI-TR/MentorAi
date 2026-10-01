@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Compass } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import AnimatedPage from '../components/AnimatedPage';
-import { useMentor } from '../context/MentorContext';
+import { useMentor } from '../context/useMentor';
 
 export default function WelcomePage() {
   const navigate = useNavigate();
@@ -17,8 +17,7 @@ export default function WelcomePage() {
 
   return (
     <AnimatedPage className="welcome-page">
-      <motion.div
-        className="welcome-card"
+      <motion.div className="welcome-card"
         initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: reduceMotion ? 0 : 0.24 }}

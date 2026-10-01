@@ -10,9 +10,7 @@ class LearningModuleRead(BaseModel):
     to_level: int = Field(..., ge=1, le=5)
     title: str
     outline: str
-    sequence: int = Field(..., ge=1)
     skill: SkillRead
-
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -23,7 +21,6 @@ class RoadmapItemRead(BaseModel):
     position: int
     status: Literal["todo", "in_progress", "done"]
     module: LearningModuleRead
-
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -43,5 +40,4 @@ class RoadmapRead(BaseModel):
     percent: float = Field(..., ge=0.0, le=100.0)
     created_at: datetime
     updated_at: datetime
-
     model_config = ConfigDict(from_attributes=True)

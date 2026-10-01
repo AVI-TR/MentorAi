@@ -3,10 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Compass } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import AnimatedPage from '../components/AnimatedPage';
+import { useMentor } from '../context/MentorContext';
 
 export default function WelcomePage() {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
+  const { resetSession } = useMentor();
+
+  const start = () => {
+    resetSession();
+    navigate('/profile');
+  };
+
   return (
     <AnimatedPage className="welcome-page">
       <motion.div
@@ -18,7 +26,7 @@ export default function WelcomePage() {
         <div className="welcome-badge"><Compass size={16} /> AI Career Mentorship</div>
         <h1 className="welcome-title">Welcome to <span className="highlight-gradient">Mentor AI</span></h1>
         <p className="welcome-tagline">Your personalized path from where you are now to where you want to be.</p>
-        <button type="button" className="btn btn-primary btn-large" onClick={() => navigate('/profile')} id="get-started-button">
+        <button type="button" className="btn btn-primary btn-large" onClick={start} id="get-started-button">
           Get Started <ArrowRight size={18} />
         </button>
       </motion.div>

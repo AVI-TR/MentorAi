@@ -1,175 +1,171 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 
 const MentorContext = createContext(null);
+const USER_ID_KEY = 'mentor:userId';
+const GOAL_ID_KEY = 'mentor:goalId';
+
+const clearStoredIds = () => {
+  localStorage.removeItem(USER_ID_KEY);
+  localStorage.removeItem(GOAL_ID_KEY);
+};
 
 export function MentorProvider({ children }) {
-  // Profile state
-  const [profile, setProfile] = useState({
-    email: '',
-    education: '',
-    year: '',
-    interests: '',
-  });
-
-  // Career state
+  const [profile, setProfile] = useState({ email: '', education: '', year: '', interests: '' });
   const [careers, setCareers] = useState([]);
   const [selectedCareer, setSelectedCareer] = useState(null);
   const [careerDetails, setCareerDetails] = useState(null);
   const [isLoadingCareers, setIsLoadingCareers] = useState(true);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-
-  // Skill assessments: { [skill_id]: 1 | 2 | 3 | 4 | 5 }
   const [skillLevels, setSkillLevels] = useState({});
-
-  // Analysis and backend execution state
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState(null);
-
-  // User and Goal records returned from API
   const [currentUser, setCurrentUser] = useState(null);
   const [currentGoal, setCurrentGoal] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionError, setSessionError] = useState(null);
 
-  // Load careers list on mount
   useEffect(() => {
-    let isMounted = true;
-    async function loadCareers() {
-      setIsLoadingCareers(true);
-      try {
-        const data = await api.getCareers();
-        if (isMounted) {
-          setCareers(data || []);
-        }
-      } catch (err) {
-        console.error('Failed to load careers:', err);
-      } finally {
-        if (isMounted) {
-          setIsLoadingCareers(false);
-        }
-      }
-    }
-    loadCareers();
-    return () => {
-      isMounted = false;
-    };
+    let mounted = true;
+    api.getCareers()
+      .then((data) => mounted && setCareers(data || []))
+      .catch(() => mounted && setSessionError('Unable to load career paths. Check the backend and retry.'))
+      .finally(() => mounted && setIsLoadingCareers(false));
+    return () => { mounted = false; };
   }, []);
 
-  // When a career is selected, fetch its required skills
+  const restoreSession = useCallback(async () => {
+    const userId = localStorage.getItem(USER_ID_KEY);
+    const goalId = localStorage.getItem(GOAL_ID_KEY);
+    if (!userId || !goalId) {
+      setSessionLoading(false);
+      return;
+    }
+
+    try {
+      const [user, goal, analysis] = await Promise.all([
+        api.getUser(userId),
+        api.getCareerGoal(userId, goalId),
+        api.getLatestGapAnalysis(goalId),
+      ]);
+      const career = await api.getCareer(goal.career_id);
+      const savedProfile = await api.getProfile(userId).catch((error) => {
+        if (error.status === 404) return null;
+        throw error;
+      });
+
+      setCurrentUser(user);
+      setCurrentGoal(goal);
+      setSelectedCareer(career);
+      setCareerDetails(career);
+      setAnalysisResult(analysis);
+      if (savedProfile) {
+        setProfile({
+          email: user.email || '',
+          education: savedProfile.education || '',
+          year: savedProfile.year || '',
+          interests: savedProfile.interests || '',
+        });
+      } else {
+        setProfile((prev) => ({ ...prev, email: user.email || '' }));
+      }
+    } catch (error) {
+      if (error.status === 404 || error.status === 422) {
+        clearStoredIds();
+      } else {
+        setSessionError('We could not restore your saved session. Check the backend and retry.');
+      }
+    } finally {
+      setSessionLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { restoreSession(); }, [restoreSession]);
+
   const selectCareer = useCallback(async (career) => {
     if (!career) return;
     setSelectedCareer(career);
+    setCareerDetails(null);
+    setSkillLevels({});
     setIsLoadingDetails(true);
     try {
       const details = await api.getCareer(career.id);
       setCareerDetails(details);
-
-      // Pre-initialize any missing skills with 1 (Beginner) as default if not already chosen
-      setSkillLevels((prev) => {
-        const updated = { ...prev };
-        details.career_skills?.forEach((cs) => {
-          if (!updated[cs.skill_id]) {
-            updated[cs.skill_id] = 1; // Default to Beginner
-          }
-        });
-        return updated;
-      });
-    } catch (err) {
-      console.error('Failed to load career details:', err);
+    } catch (error) {
+      setSessionError('Unable to load the skills for this career. Please retry.');
     } finally {
       setIsLoadingDetails(false);
     }
   }, []);
 
-  // Set skill level
   const setSkillLevel = useCallback((skillId, level) => {
-    setSkillLevels((prev) => ({
-      ...prev,
-      [skillId]: level,
-    }));
+    setSkillLevels((prev) => ({ ...prev, [skillId]: level }));
   }, []);
 
-  // Update profile fields
   const updateProfile = useCallback((fields) => {
-    setProfile((prev) => ({
-      ...prev,
-      ...fields,
-    }));
+    setProfile((prev) => ({ ...prev, ...fields }));
   }, []);
 
-  // Run the full analysis pipeline against the backend
   const runAnalysis = useCallback(async () => {
-    if (!profile.email?.trim()) {
-      throw new Error('Email is required.');
-    }
-    if (!selectedCareer || !careerDetails) {
-      throw new Error('Please select a career goal.');
-    }
+    if (!profile.email?.trim()) throw new Error('Email is required.');
+    if (!selectedCareer || !careerDetails) throw new Error('Please select a career goal.');
+
+    const requiredSkills = careerDetails.career_skills || [];
+    const unrated = requiredSkills.filter((skill) => skillLevels[skill.skill_id] === undefined);
+    if (unrated.length) throw new Error('Please rate every required skill before continuing.');
 
     setIsAnalyzing(true);
     setAnalysisError(null);
 
     try {
-      // 1. Get or create user by email
-      const user = await api.getOrCreateUser(profile.email.trim());
+      const user = await api.createUser(profile.email.trim());
       setCurrentUser(user);
 
-      // 2. Upsert profile information
-      await api.upsertProfile(user.id, {
-        education: profile.education?.trim() || null,
-        year: profile.year?.trim() || null,
-        interests: profile.interests?.trim() || null,
-      });
+      await api.upsertProfile(user.id, profile);
 
-      // 3. Upsert student skills for the selected career
-      const requiredSkills = careerDetails.career_skills || [];
-      for (const cs of requiredSkills) {
-        const level = skillLevels[cs.skill_id] || 1;
-        await api.upsertStudentSkill(user.id, cs.skill_id, level, 'self_assessed');
-      }
+      await api.batchUpdateStudentSkills(
+        user.id,
+        requiredSkills.map((skill) => ({
+          skill_id: skill.skill_id,
+          level: Number(skillLevels[skill.skill_id]),
+          source: 'self_assessed',
+        })),
+      );
 
-      // 4. Create career goal
       const goal = await api.createCareerGoal(user.id, selectedCareer.id, 'active');
       setCurrentGoal(goal);
 
-      // 5. Generate gap analysis snapshot
       const result = await api.createGapAnalysis(goal.id);
       setAnalysisResult(result);
+      localStorage.setItem(USER_ID_KEY, String(user.id));
+      localStorage.setItem(GOAL_ID_KEY, String(goal.id));
       return result;
-    } catch (err) {
-      setAnalysisError(err.message || 'Failed to complete analysis.');
-      throw err;
+    } catch (error) {
+      setAnalysisError(error.message || 'Failed to complete analysis.');
+      throw error;
     } finally {
       setIsAnalyzing(false);
     }
   }, [profile, selectedCareer, careerDetails, skillLevels]);
 
-  const value = {
-    profile,
-    updateProfile,
-    careers,
-    selectedCareer,
-    selectCareer,
-    careerDetails,
-    isLoadingCareers,
-    isLoadingDetails,
-    skillLevels,
-    setSkillLevel,
-    analysisResult,
-    isAnalyzing,
-    analysisError,
-    runAnalysis,
-    currentUser,
-    currentGoal,
-  };
+  const value = useMemo(() => ({
+    profile, updateProfile, careers, selectedCareer, selectCareer, careerDetails,
+    isLoadingCareers, isLoadingDetails, skillLevels, setSkillLevel,
+    analysisResult, isAnalyzing, analysisError, runAnalysis,
+    currentUser, currentGoal, sessionLoading, sessionError, restoreSession,
+  }), [
+    profile, updateProfile, careers, selectedCareer, selectCareer, careerDetails,
+    isLoadingCareers, isLoadingDetails, skillLevels, setSkillLevel, analysisResult,
+    isAnalyzing, analysisError, runAnalysis, currentUser, currentGoal,
+    sessionLoading, sessionError, restoreSession,
+  ]);
 
   return <MentorContext.Provider value={value}>{children}</MentorContext.Provider>;
 }
 
 export function useMentor() {
-  const context = useContext(MentorContext);
-  if (!context) {
-    throw new Error('useMentor must be used within a MentorProvider');
-  }
+  const context = React.useContext(MentorContext);
+  if (!context) throw new Error('useMentor must be used within a MentorProvider');
   return context;
 }

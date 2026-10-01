@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 
+from app.models.learning_module import LearningModule
+
 
 def test_seed_catalog_contains_backend_developer(seeded_client: TestClient):
     response = seeded_client.get("/api/v1/careers")
@@ -26,11 +28,13 @@ def test_create_career_and_skills(client: TestClient, db_session):
     assert skill_res.status_code == 201
     skill_id = skill_res.json()["id"]
 
-    modules = list(db_session.scalars(
-        select(__import__("app.models.learning_module", fromlist=["LearningModule"]).LearningModule)
-        .where(__import__("app.models.learning_module", fromlist=["LearningModule"]).LearningModule.skill_id == skill_id)
-        .order_by(__import__("app.models.learning_module", fromlist=["LearningModule"]).LearningModule.to_level)
-    ).all())
+    modules = list(
+        db_session.scalars(
+            select(LearningModule)
+            .where(LearningModule.skill_id == skill_id)
+            .order_by(LearningModule.to_level)
+        ).all()
+    )
     assert [module.to_level for module in modules] == [1, 2, 3, 4, 5]
     assert [module.title for module in modules] == [f"Rust: Level {level}" for level in range(1, 6)]
 

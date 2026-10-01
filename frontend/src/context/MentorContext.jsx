@@ -149,16 +149,29 @@ export function MentorProvider({ children }) {
     }
   }, [profile, selectedCareer, careerDetails, skillLevels]);
 
+  const resetSession = useCallback(() => {
+    clearStoredIds();
+    setProfile({ email: '', education: '', year: '', interests: '' });
+    setSelectedCareer(null);
+    setCareerDetails(null);
+    setSkillLevels({});
+    setAnalysisResult(null);
+    setAnalysisError(null);
+    setCurrentUser(null);
+    setCurrentGoal(null);
+    setSessionError(null);
+  }, []);
+
   const value = useMemo(() => ({
     profile, updateProfile, careers, selectedCareer, selectCareer, careerDetails,
     isLoadingCareers, isLoadingDetails, skillLevels, setSkillLevel,
     analysisResult, isAnalyzing, analysisError, runAnalysis,
-    currentUser, currentGoal, sessionLoading, sessionError, restoreSession,
+    currentUser, currentGoal, sessionLoading, sessionError, restoreSession, resetSession,
   }), [
     profile, updateProfile, careers, selectedCareer, selectCareer, careerDetails,
     isLoadingCareers, isLoadingDetails, skillLevels, setSkillLevel, analysisResult,
     isAnalyzing, analysisError, runAnalysis, currentUser, currentGoal,
-    sessionLoading, sessionError, restoreSession,
+    sessionLoading, sessionError, restoreSession, resetSession,
   ]);
 
   return <MentorContext.Provider value={value}>{children}</MentorContext.Provider>;

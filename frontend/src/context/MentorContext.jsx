@@ -19,6 +19,9 @@ export function MentorProvider({ children }) {
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [skillLevels, setSkillLevels] = useState({});
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [roadmap, setRoadmap] = useState(null);
+  const [isLoadingRoadmap, setIsLoadingRoadmap] = useState(false);
+  const [roadmapError, setRoadmapError] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -44,10 +47,14 @@ export function MentorProvider({ children }) {
     }
 
     try {
-      const [user, goal, analysis] = await Promise.all([
+      const [user, goal, analysis, savedRoadmap] = await Promise.all([
         api.getUser(userId),
         api.getCareerGoal(userId, goalId),
         api.getLatestGapAnalysis(goalId),
+        api.getLatestRoadmap(goalId).catch((error) => {
+          if (error.status === 404) return null;
+          throw error;
+        }),
       ]);
       const career = await api.getCareer(goal.career_id);
       const savedProfile = await api.getProfile(userId).catch((error) => {
@@ -60,6 +67,7 @@ export function MentorProvider({ children }) {
       setSelectedCareer(career);
       setCareerDetails(career);
       setAnalysisResult(analysis);
+      setRoadmap(savedRoadmap);
       if (savedProfile) {
         setProfile({
           email: user.email || '',
@@ -70,7 +78,7 @@ export function MentorProvider({ children }) {
       } else {
         setProfile((prev) => ({ ...prev, email: user.email || '' }));
       }
-    } catch {
+    } catch (error) {
       if (error.status === 404 || error.status === 422) {
         clearStoredIds();
       } else {
@@ -81,18 +89,22 @@ export function MentorProvider({ children }) {
     }
   }, []);
 
-  useEffect(() => { const timer = window.setTimeout(() => { restoreSession(); }, 0); return () => window.clearTimeout(timer); }, [restoreSession]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { restoreSession(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [restoreSession]);
 
   const selectCareer = useCallback(async (career) => {
     if (!career) return;
     setSelectedCareer(career);
     setCareerDetails(null);
     setSkillLevels({});
+    setRoadmap(null);
     setIsLoadingDetails(true);
     try {
       const details = await api.getCareer(career.id);
       setCareerDetails(details);
-    } catch (error) {
+    } catch {
       setSessionError('Unable to load the skills for this career. Please retry.');
     } finally {
       setIsLoadingDetails(false);
@@ -117,13 +129,12 @@ export function MentorProvider({ children }) {
 
     setIsAnalyzing(true);
     setAnalysisError(null);
+    setRoadmapError(null);
 
     try {
       const user = await api.createUser(profile.email.trim());
       setCurrentUser(user);
-
       await api.upsertProfile(user.id, profile);
-
       await api.batchUpdateStudentSkills(
         user.id,
         requiredSkills.map((skill) => ({
@@ -138,16 +149,34 @@ export function MentorProvider({ children }) {
 
       const result = await api.createGapAnalysis(goal.id);
       setAnalysisResult(result);
+
+      setIsLoadingRoadmap(true);
+      const generatedRoadmap = await api.createRoadmap(goal.id);
+      setRoadmap(generatedRoadmap);
+
       localStorage.setItem(USER_ID_KEY, String(user.id));
       localStorage.setItem(GOAL_ID_KEY, String(goal.id));
       return result;
     } catch (error) {
-      setAnalysisError(error.message || 'Failed to complete analysis.');
+      setAnalysisError(error.message || 'Failed to complete the analysis.');
       throw error;
     } finally {
+      setIsLoadingRoadmap(false);
       setIsAnalyzing(false);
     }
   }, [profile, selectedCareer, careerDetails, skillLevels]);
+
+  const updateRoadmapItem = useCallback(async (itemId, status) => {
+    if (!currentGoal) throw new Error('No active career goal.');
+    const updatedItem = await api.updateRoadmapItem(currentGoal.id, itemId, status);
+    setRoadmap((previous) => {
+      if (!previous) return previous;
+      const items = previous.items.map((item) => item.id === itemId ? { ...item, status: updatedItem.status } : item);
+      const done = items.filter((item) => item.status === 'done').length;
+      return { ...previous, items, done, total: items.length, percent: items.length ? Number(((done / items.length) * 100).toFixed(2)) : 0 };
+    });
+    return updatedItem;
+  }, [currentGoal]);
 
   const resetSession = useCallback(() => {
     clearStoredIds();
@@ -156,6 +185,8 @@ export function MentorProvider({ children }) {
     setCareerDetails(null);
     setSkillLevels({});
     setAnalysisResult(null);
+    setRoadmap(null);
+    setRoadmapError(null);
     setAnalysisError(null);
     setCurrentUser(null);
     setCurrentGoal(null);
@@ -165,15 +196,16 @@ export function MentorProvider({ children }) {
   const value = useMemo(() => ({
     profile, updateProfile, careers, selectedCareer, selectCareer, careerDetails,
     isLoadingCareers, isLoadingDetails, skillLevels, setSkillLevel,
-    analysisResult, isAnalyzing, analysisError, runAnalysis,
-    currentUser, currentGoal, sessionLoading, sessionError, restoreSession, resetSession,
+    analysisResult, roadmap, isLoadingRoadmap, roadmapError, isAnalyzing, analysisError,
+    runAnalysis, updateRoadmapItem, currentUser, currentGoal, sessionLoading, sessionError,
+    restoreSession, resetSession,
   }), [
     profile, updateProfile, careers, selectedCareer, selectCareer, careerDetails,
     isLoadingCareers, isLoadingDetails, skillLevels, setSkillLevel, analysisResult,
-    isAnalyzing, analysisError, runAnalysis, currentUser, currentGoal,
-    sessionLoading, sessionError, restoreSession, resetSession,
+    roadmap, isLoadingRoadmap, roadmapError, isAnalyzing, analysisError, runAnalysis,
+    updateRoadmapItem, currentUser, currentGoal, sessionLoading, sessionError,
+    restoreSession, resetSession,
   ]);
 
   return <MentorContext.Provider value={value}>{children}</MentorContext.Provider>;
 }
-

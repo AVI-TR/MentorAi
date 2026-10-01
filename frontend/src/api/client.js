@@ -62,4 +62,16 @@ export const api = {
   async getLatestGapAnalysis(goalId) {
     return request(`/goals/${goalId}/gap-analysis/latest`);
   },
+  async createRoadmap(goalId) {
+    return request(`/goals/${goalId}/roadmap`, { method: 'POST' });
+  },
+  async getLatestRoadmap(goalId) {
+    return request(`/goals/${goalId}/roadmap/latest`);
+  },
+  async updateRoadmapItem(goalId, itemId, status) {
+    return request(`/goals/${goalId}/roadmap/items/${itemId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
 };
